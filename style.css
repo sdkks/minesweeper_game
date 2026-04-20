@@ -32,6 +32,12 @@ html, body {
   color: var(--color-text);
 }
 
+body {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
 /* Screen-reader only */
 .sr-only {
   position: absolute;
@@ -49,11 +55,11 @@ html, body {
    App Layout
    ============================================================ */
 #app {
-  min-height: 100vh;
+  flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 1.5rem 1rem 3rem;
+  padding: 1.5rem 1rem 2rem;
   gap: 1.5rem;
 }
 
@@ -374,6 +380,30 @@ header h1 {
   font-style: normal;
   line-height: 1;
   pointer-events: none;
+}
+
+/* ============================================================
+   Footer
+   ============================================================ */
+footer {
+  text-align: center;
+  padding: 1.5rem 1rem;
+  width: 100%;
+}
+
+footer a {
+  color: var(--color-text-muted);
+  text-decoration: none;
+  font-size: 0.85rem;
+  transition: color 0.15s;
+}
+
+footer a:visited {
+  color: var(--color-text-muted);
+}
+
+footer a:hover {
+  color: var(--color-text);
 }
 
 /* ============================================================
