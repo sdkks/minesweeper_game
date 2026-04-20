@@ -1,6 +1,9 @@
-.PHONY: all build test test-unit test-e2e
+.PHONY: all build dev test test-unit test-e2e
 
 all: test build
+
+dev:
+	npm run dev
 
 build:
 	npm run build
