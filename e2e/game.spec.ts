@@ -185,6 +185,15 @@ test.describe('new game button', () => {
   });
 });
 
+test.describe('footer', () => {
+  test('footer contains "Source Code (Github)" link to GitHub repo', async ({ page }) => {
+    await page.goto('');
+    const link = page.locator('footer a');
+    await expect(link).toHaveText('Source Code (Github)');
+    await expect(link).toHaveAttribute('href', 'https://github.com/sdkks/minesweeper_game');
+  });
+});
+
 test.describe('accessibility', () => {
   test('cell aria-label format: "Row N, Column N: state"', async ({ page }) => {
     await page.goto('');
