@@ -21,6 +21,7 @@ import {
 import * as renderer from './renderer';
 import * as input from './input';
 import * as timer from './timer';
+import { initTheme } from './theme';
 
 // ------------------------------------------------------------
 // Module-level mutable state
@@ -38,6 +39,7 @@ function main(): void {
 
   const ariaLive = document.getElementById('aria-live');
 
+  initTheme();
   renderer.init(root, gameState);
   renderer.buildControlsRow(root, gameState, handleDifficultyClick, handleNewGame);
   renderer.setMineCount(gameState.totalMines - gameState.flagCount);
@@ -127,29 +129,7 @@ function handleAction(action: InputAction): void {
 function handleDifficultyClick(key: string): void {
   const dk = key as DifficultyKey;
   if (dk === gameState.difficulty) return;
-
-  const root = document.getElementById('game-root')!;
-
-  if (gameState.phase === GamePhase.Active) {
-    renderer.showConfirmPrompt(
-      root,
-      () => {
-        renderer.hideConfirmPrompt(root);
-        applyDifficulty(dk);
-      },
-      () => {
-        renderer.hideConfirmPrompt(root);
-      }
-    );
-  } else {
-    applyDifficulty(dk);
-  }
-}
-
-function applyDifficulty(dk: DifficultyKey): void {
   resetGame(dk);
-  const root = document.getElementById('game-root')!;
-  renderer.updateDifficultyButtons(root, dk);
 }
 
 // ------------------------------------------------------------
@@ -173,7 +153,6 @@ function resetGame(difficulty: DifficultyKey): void {
   gameState = createGame(difficulty);
 
   renderer.hideBanner();
-  renderer.hideConfirmPrompt(root);
   renderer.init(root, gameState);
   renderer.buildControlsRow(root, gameState, handleDifficultyClick, handleNewGame);
   renderer.setMineCount(gameState.totalMines - gameState.flagCount);

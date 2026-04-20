@@ -6,7 +6,7 @@ test.describe('initial render', () => {
     await expect(page).toHaveTitle('Minesweeper');
     const cells = page.locator('[role="gridcell"]');
     await expect(cells).toHaveCount(81);
-    await expect(page.getByRole('button', { name: 'Beginner', exact: true })).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.locator('#difficulty-select')).toHaveValue('beginner');
     await expect(page.locator('#mine-count')).toHaveText('10');
     await expect(page.locator('#timer')).toHaveText('00:00');
   });
@@ -83,54 +83,113 @@ test.describe('flag cycle (SC4)', () => {
   });
 });
 
-test.describe('difficulty selector', () => {
-  test('Intermediate board: 256 cells', async ({ page }) => {
+test.describe('difficulty dropdown', () => {
+  test('#difficulty-select has 3 options: Beginner, Intermediate, Expert', async ({ page }) => {
     await page.goto('');
-    await page.getByRole('button', { name: 'Intermediate' }).click();
+    const sel = page.locator('#difficulty-select');
+    await expect(sel.locator('option')).toHaveCount(3);
+    await expect(sel.locator('option[value="beginner"]')).toHaveText('Beginner');
+    await expect(sel.locator('option[value="intermediate"]')).toHaveText('Intermediate');
+    await expect(sel.locator('option[value="expert"]')).toHaveText('Expert');
+  });
+
+  test('default selection is Beginner', async ({ page }) => {
+    await page.goto('');
+    await expect(page.locator('#difficulty-select')).toHaveValue('beginner');
+  });
+
+  test('selecting Intermediate gives 256 cells and 40 mines', async ({ page }) => {
+    await page.goto('');
+    await page.locator('#difficulty-select').selectOption('intermediate');
     await expect(page.locator('[role="gridcell"]')).toHaveCount(256);
     await expect(page.locator('#mine-count')).toHaveText('40');
   });
 
-  test('Expert board: 480 cells', async ({ page }) => {
+  test('selecting Expert gives 480 cells and 99 mines', async ({ page }) => {
     await page.goto('');
-    await page.getByRole('button', { name: 'Expert' }).click();
+    await page.locator('#difficulty-select').selectOption('expert');
     await expect(page.locator('[role="gridcell"]')).toHaveCount(480);
     await expect(page.locator('#mine-count')).toHaveText('99');
   });
 
-  test('switching difficulty mid-game shows confirmation prompt', async ({ page }) => {
-    await page.goto('');
-    await page.locator('[data-index="40"]').click(); // start game
-    await page.getByRole('button', { name: 'Intermediate' }).click();
-    await expect(page.locator('#confirm-prompt')).toBeVisible();
-    await expect(page.locator('#confirm-prompt p')).toHaveText(
-      'Changing difficulty will reset the board. Confirm?'
-    );
-  });
-
-  test('cancelling confirmation keeps the current board', async ({ page }) => {
+  test('changing difficulty mid-game immediately resets — no confirm prompt', async ({ page }) => {
     await page.goto('');
     await page.locator('[data-index="40"]').click();
-    await page.getByRole('button', { name: 'Intermediate' }).click();
-    await page.getByRole('button', { name: 'Cancel' }).click();
-    await expect(page.locator('[role="gridcell"]')).toHaveCount(81);
+    await page.locator('#difficulty-select').selectOption('intermediate');
     await expect(page.locator('#confirm-prompt')).toHaveCount(0);
-  });
-
-  test('confirming difficulty change resets board', async ({ page }) => {
-    await page.goto('');
-    await page.locator('[data-index="40"]').click();
-    await page.getByRole('button', { name: 'Intermediate' }).click();
-    await page.getByRole('button', { name: 'Confirm' }).click();
     await expect(page.locator('[role="gridcell"]')).toHaveCount(256);
   });
+});
 
-  test('switching difficulty when idle resets immediately without prompt', async ({ page }) => {
+test.describe('theme dropdown', () => {
+  test('#theme-select has 4 options', async ({ page }) => {
     await page.goto('');
-    // No click yet — game is Idle
-    await page.getByRole('button', { name: 'Expert' }).click();
-    await expect(page.locator('#confirm-prompt')).toHaveCount(0);
-    await expect(page.locator('[role="gridcell"]')).toHaveCount(480);
+    const sel = page.locator('#theme-select');
+    await expect(sel.locator('option')).toHaveCount(4);
+    await expect(sel.locator('option[value="dark-navy"]')).toHaveText('Dark Navy');
+    await expect(sel.locator('option[value="light"]')).toHaveText('Light');
+    await expect(sel.locator('option[value="forest"]')).toHaveText('Forest');
+    await expect(sel.locator('option[value="retro"]')).toHaveText('Retro');
+  });
+
+  test('default theme is Dark Navy — no data-theme attribute on <html>', async ({ page }) => {
+    await page.goto('');
+    await expect(page.locator('#theme-select')).toHaveValue('dark-navy');
+    const attr = await page.evaluate(() => document.documentElement.dataset.theme);
+    expect(attr).toBeUndefined();
+  });
+
+  test('selecting Forest sets data-theme="forest" and persists to localStorage', async ({ page }) => {
+    await page.goto('');
+    await page.locator('#theme-select').selectOption('forest');
+    const attr = await page.evaluate(() => document.documentElement.dataset.theme);
+    expect(attr).toBe('forest');
+    const stored = await page.evaluate(() => localStorage.getItem('minesweeper-theme'));
+    expect(stored).toBe('forest');
+  });
+
+  test('Forest persists across reload', async ({ page }) => {
+    await page.goto('');
+    await page.locator('#theme-select').selectOption('forest');
+    await page.reload();
+    const attr = await page.evaluate(() => document.documentElement.dataset.theme);
+    expect(attr).toBe('forest');
+    await expect(page.locator('#theme-select')).toHaveValue('forest');
+  });
+
+  test('selecting Dark Navy removes data-theme attribute and localStorage key', async ({ page }) => {
+    await page.goto('');
+    await page.locator('#theme-select').selectOption('forest');
+    await page.locator('#theme-select').selectOption('dark-navy');
+    const attr = await page.evaluate(() => document.documentElement.dataset.theme);
+    expect(attr).toBeUndefined();
+    const stored = await page.evaluate(() => localStorage.getItem('minesweeper-theme'));
+    expect(stored).toBeNull();
+  });
+
+  test('Retro hidden cells have raised bevel box-shadow', async ({ page }) => {
+    await page.goto('');
+    await page.locator('#theme-select').selectOption('retro');
+    const shadow = await page.evaluate(() => {
+      const cell = document.querySelector<HTMLElement>('.cell[data-state="hidden"]');
+      return cell ? getComputedStyle(cell).boxShadow : '';
+    });
+    expect(shadow).not.toBe('none');
+    expect(shadow).not.toBe('');
+  });
+
+  test('non-Retro themes have no bevel box-shadow on cells', async ({ page }) => {
+    await page.goto('');
+    for (const theme of ['dark-navy', 'light', 'forest']) {
+      if (theme !== 'dark-navy') {
+        await page.locator('#theme-select').selectOption(theme);
+      }
+      const shadow = await page.evaluate(() => {
+        const cell = document.querySelector<HTMLElement>('.cell[data-state="hidden"]');
+        return cell ? getComputedStyle(cell).boxShadow : '';
+      });
+      expect(shadow).toBe('none');
+    }
   });
 });
 
@@ -176,7 +235,7 @@ test.describe('loss banner', () => {
 });
 
 test.describe('new game button', () => {
-  test('"New game — Beginner" resets board at same difficulty', async ({ page }) => {
+  test('"New game" resets board at same difficulty', async ({ page }) => {
     await page.goto('');
     await page.locator('[data-index="40"]').click();
     await page.getByRole('button', { name: /New game/ }).click();

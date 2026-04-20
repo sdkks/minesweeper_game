@@ -10,6 +10,7 @@ import {
   CellDisplayState,
 } from './types';
 import { formatTime } from './utils';
+import { applyTheme } from './theme';
 
 // ------------------------------------------------------------
 // Module-level state
@@ -278,7 +279,7 @@ export function hideBanner(): void {
 export function buildControlsRow(
   container: HTMLElement,
   state: GameState,
-  onDifficultyClick: (key: string) => void,
+  onDifficultyChange: (key: string) => void,
   onNewGame: () => void
 ): void {
   const row = container.querySelector<HTMLElement>('#controls-row');
@@ -317,109 +318,64 @@ export function buildControlsRow(
   hud.appendChild(timerItem);
   row.appendChild(hud);
 
-  // Difficulty selector
-  const diffSel = document.createElement('div');
-  diffSel.className = 'difficulty-selector';
-  diffSel.setAttribute('role', 'group');
-  diffSel.setAttribute('aria-label', 'Difficulty');
-
+  // Difficulty dropdown
+  const diffLabel = document.createElement('label');
+  diffLabel.className = 'controls-label';
+  diffLabel.textContent = 'Diff';
+  const diffSelect = document.createElement('select');
+  diffSelect.id = 'difficulty-select';
+  diffSelect.className = 'controls-select';
+  diffSelect.setAttribute('aria-label', 'Difficulty');
   const difficulties: { key: string; label: string }[] = [
     { key: 'beginner', label: 'Beginner' },
     { key: 'intermediate', label: 'Intermediate' },
     { key: 'expert', label: 'Expert' },
   ];
-
   for (const { key, label } of difficulties) {
-    const btn = document.createElement('button');
-    btn.className = 'difficulty-btn' + (key === state.difficulty ? ' active' : '');
-    btn.textContent = label;
-    btn.dataset.difficulty = key;
-    btn.setAttribute('aria-pressed', String(key === state.difficulty));
-    btn.addEventListener('click', () => onDifficultyClick(key));
-    diffSel.appendChild(btn);
+    const opt = document.createElement('option');
+    opt.value = key;
+    opt.textContent = label;
+    if (key === state.difficulty) opt.selected = true;
+    diffSelect.appendChild(opt);
   }
+  diffSelect.addEventListener('change', () => onDifficultyChange(diffSelect.value));
+  diffLabel.appendChild(diffSelect);
+  row.appendChild(diffLabel);
 
-  row.appendChild(diffSel);
+  // Theme dropdown
+  const themeLabel = document.createElement('label');
+  themeLabel.className = 'controls-label';
+  themeLabel.textContent = 'Theme';
+  const themeSelect = document.createElement('select');
+  themeSelect.id = 'theme-select';
+  themeSelect.className = 'controls-select';
+  themeSelect.setAttribute('aria-label', 'Theme');
+  const themes: { key: string; label: string }[] = [
+    { key: 'dark-navy', label: 'Dark Navy' },
+    { key: 'light', label: 'Light' },
+    { key: 'forest', label: 'Forest' },
+    { key: 'retro', label: 'Retro' },
+  ];
+  const currentTheme = document.documentElement.dataset.theme || 'dark-navy';
+  for (const { key, label } of themes) {
+    const opt = document.createElement('option');
+    opt.value = key;
+    opt.textContent = label;
+    if (key === currentTheme) opt.selected = true;
+    themeSelect.appendChild(opt);
+  }
+  themeSelect.addEventListener('change', () => applyTheme(themeSelect.value as Parameters<typeof applyTheme>[0]));
+  themeLabel.appendChild(themeSelect);
+  row.appendChild(themeLabel);
 
   // New game button
   const newBtn = document.createElement('button');
   newBtn.className = 'new-game-btn';
-  const diffLabel = state.difficulty.charAt(0).toUpperCase() + state.difficulty.slice(1);
-  newBtn.textContent = `New game — ${diffLabel}`;
+  newBtn.textContent = 'New game';
   newBtn.addEventListener('click', onNewGame);
   row.appendChild(newBtn);
 }
 
-// ------------------------------------------------------------
-// showConfirmPrompt / hideConfirmPrompt
-// ------------------------------------------------------------
-
-export function showConfirmPrompt(
-  container: HTMLElement,
-  onConfirm: () => void,
-  onCancel: () => void
-): void {
-  hideConfirmPrompt(container);
-
-  const prompt = document.createElement('div');
-  prompt.className = 'confirm-prompt';
-  prompt.id = 'confirm-prompt';
-
-  const msg = document.createElement('p');
-  msg.textContent = 'Changing difficulty will reset the board. Confirm?';
-
-  const okBtn = document.createElement('button');
-  okBtn.className = 'confirm-btn confirm-ok';
-  okBtn.textContent = 'Confirm';
-  okBtn.addEventListener('click', onConfirm);
-
-  const cancelBtn = document.createElement('button');
-  cancelBtn.className = 'confirm-btn';
-  cancelBtn.textContent = 'Cancel';
-  cancelBtn.addEventListener('click', onCancel);
-
-  prompt.appendChild(msg);
-  prompt.appendChild(okBtn);
-  prompt.appendChild(cancelBtn);
-
-  // Insert after controls row
-  const controlsRow = container.querySelector('#controls-row');
-  if (controlsRow && controlsRow.nextSibling) {
-    container.insertBefore(prompt, controlsRow.nextSibling);
-  } else {
-    container.appendChild(prompt);
-  }
-
-  okBtn.focus();
-}
-
-export function hideConfirmPrompt(container: HTMLElement): void {
-  const existing = container.querySelector('#confirm-prompt');
-  if (existing) existing.remove();
-}
-
-// ------------------------------------------------------------
-// updateDifficultyButtons — update active state without full rebuild
-// ------------------------------------------------------------
-
-export function updateDifficultyButtons(
-  container: HTMLElement,
-  difficulty: string
-): void {
-  const row = container.querySelector('#controls-row');
-  if (!row) return;
-  row.querySelectorAll<HTMLElement>('.difficulty-btn').forEach(btn => {
-    const isActive = btn.dataset.difficulty === difficulty;
-    btn.classList.toggle('active', isActive);
-    btn.setAttribute('aria-pressed', String(isActive));
-  });
-
-  const newBtn = row.querySelector<HTMLElement>('.new-game-btn');
-  if (newBtn) {
-    const label = difficulty.charAt(0).toUpperCase() + difficulty.slice(1);
-    newBtn.textContent = `New game — ${label}`;
-  }
-}
 
 // ------------------------------------------------------------
 // Roving tabindex — arrow-key navigation
